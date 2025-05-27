@@ -1,22 +1,33 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <title>Painel</title>
   <link rel="stylesheet" href="style.css" />
-
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <div id="painelSenha">Aguardando chamada...</div>
 
   <script>
-    function atualizarPainel() {
-      const senha = localStorage.getItem('senhaChamada');
-      document.getElementById('painelSenha').innerText = senha ? `Senha: ${senha}` : 'Aguardando chamada...';
+    async function atualizarPainel() {
+      try {
+        const res = await fetch('/api/atual');
+        if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
+        const data = await res.json();
+        const senha = data.senha;
+        document.getElementById('painelSenha').innerText = senha ? `Senha: ${senha}` : 'Aguardando chamada...';
+      } catch (e) {
+        console.error('Erro ao buscar senha:', e);
+        document.getElementById('painelSenha').innerText = 'Erro ao buscar senha';
+      }
     }
 
-    setInterval(atualizarPainel, 1000);
+    setInterval(atualizarPainel, 2000);
     atualizarPainel();
   </script>
 </body>
+
 </html>

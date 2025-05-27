@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <title>Totem - Gerar Senha</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <h1>Gerar Senha</h1>
   <button onclick="gerarSenha('N')">Senha Normal</button>
@@ -12,16 +14,23 @@
   <p id="ultimaSenha"></p>
 
   <script>
-    function gerarSenha(tipo) {
-      let chave = tipo === 'P' ? 'filaP' : 'filaN';
-      let fila = JSON.parse(localStorage.getItem(chave)) || [];
+    async function gerarSenha(tipo) {
+      try {
+        const res = await fetch('/api/senha', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tipo })
+        });
 
-      // Gera próxima senha (último número + 1)
-      let novaSenha = tipo + String((fila.length ? parseInt(fila[fila.length - 1].substring(1)) + 1 : 1)).padStart(3, '0');
-      fila.push(novaSenha);
-      localStorage.setItem(chave, JSON.stringify(fila));
-      document.getElementById('ultimaSenha').innerText = `Senha gerada: ${novaSenha}`;
+        const data = await res.json();
+        document.getElementById('ultimaSenha').innerText = `Senha gerada: ${data.senha}`;
+      } catch (err) {
+        console.error('Erro ao gerar senha:', err);
+        document.getElementById('ultimaSenha').innerText = 'Erro ao gerar senha';
+      }
     }
   </script>
+
 </body>
+
 </html>

@@ -1,73 +1,105 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <title>Atendente</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <h1>Atendente</h1>
   <button onclick="chamar()">Chamar</button>
   <button onclick="reChamar()">Rechamar</button>
   <button onclick="voltar()">Voltar</button>
   <button onclick="zerar()">Zerar</button>
-  <p id="senhaAtual"></p>
+  <p id="senhaAtual">Nenhuma senha</p>
 
   <script>
     let senhaAtual = null;
-    let historico = [];
 
-    function atualizarTela() {
-      document.getElementById('senhaAtual').innerText = senhaAtual ? `Senha: ${senhaAtual}` : 'Nenhuma senha';
+    async function chamar() {
+      try {
+        const res = await fetch('/api/proxima');
+        const data = await res.json();
+        senhaAtual = data.senha;
+
+        if (!senhaAtual) {
+          alert('Nenhuma senha na fila');
+        }
+
+        atualizarTela();
+
+      } catch (e) {
+        console.error('Erro ao chamar senha:', e);
+      }
     }
 
-    function chamar() {
-      let filaP = JSON.parse(localStorage.getItem('filaP')) || [];
-      let filaN = JSON.parse(localStorage.getItem('filaN')) || [];
-
-      if (filaP.length > 0) {
-        senhaAtual = filaP.shift();
-        localStorage.setItem('filaP', JSON.stringify(filaP));
-      } else if (filaN.length > 0) {
-        senhaAtual = filaN.shift();
-        localStorage.setItem('filaN', JSON.stringify(filaN));
-      } else {
-        alert('Todas as filas estão vazias!');
+    async function reChamar() {
+      if (!senhaAtual) {
+        alert('Nenhuma senha para rechamar');
         return;
       }
 
-      historico.push(senhaAtual);
-      localStorage.setItem('senhaChamada', senhaAtual);
-      atualizarTela();
-    }
+      function rechamarSenha() {
 
-    function reChamar() {
-      if (senhaAtual) {
-        localStorage.setItem('senhaChamada', senhaAtual);
-      }
-    }
-
-    function voltar() {
-      if (historico.length > 1) {
-        historico.pop();
-        senhaAtual = historico[historico.length - 1];
-        localStorage.setItem('senhaChamada', senhaAtual);
         atualizarTela();
+
+        fetch('http://localhost:3000/publico.html', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            senha: senhaAtual
+          })
+        })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('Erro ao enviar rechamada para o painel.');
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log('Painel externo notificado:', data);
+          })
+          .catch(error => {
+            console.error('Erro na comunicação com o painel externo:', error);
+          });
       }
     }
 
-    function zerar() {
-      if (confirm("Tem certeza que deseja zerar tudo?")) {
-        localStorage.removeItem('filaN');
-        localStorage.removeItem('filaP');
-        localStorage.removeItem('senhaChamada');
-        senhaAtual = null;
-        historico = [];
-        atualizarTela();
-      }
-    }
+      async function voltar() {
+        if (!senhaAtual) {
+          alert('Nenhuma senha atual para voltar');
+          return;
+        }
 
-    atualizarTela();
+        try {
+          await fetch('/api/voltar', { method: 'POST' });
+          senhaAtual = null;
+          atualizarTela();
+        } catch (e) {
+          console.error('Erro ao voltar senha:', e);
+        }
+      }
+
+      async function zerar() {
+        if (confirm("Tem certeza que deseja zerar tudo?")) {
+          try {
+            await fetch('/api/zerar', { method: 'POST' });
+            senhaAtual = null;
+            atualizarTela();
+          } catch (e) {
+            console.error('Erro ao zerar:', e);
+          }
+        }
+      }
+
+      function atualizarTela() {
+        document.getElementById('senhaAtual').innerText = senhaAtual ? `Senha: ${senhaAtual}` : 'Nenhuma senha';
+      }
   </script>
 </body>
+
 </html>
