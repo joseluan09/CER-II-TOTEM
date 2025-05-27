@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Painel</title>
+  <link rel="stylesheet" href="style.css" />
+
+</head>
+<body>
+  <div id="painelSenha">Aguardando chamada...</div>
+
+  <script>
+    function atualizarPainel() {
+      const senha = localStorage.getItem('senhaChamada');
+      document.getElementById('painelSenha').innerText = senha ? `Senha: ${senha}` : 'Aguardando chamada...';
+    }
+
+    setInterval(atualizarPainel, 1000);
+    atualizarPainel();
+  </script>
+</body>
+</html>

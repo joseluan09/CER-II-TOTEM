@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Atendente</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Atendente</h1>
+  <button onclick="chamar()">Chamar</button>
+  <button onclick="reChamar()">Rechamar</button>
+  <button onclick="voltar()">Voltar</button>
+  <button onclick="zerar()">Zerar</button>
+  <p id="senhaAtual"></p>
+
+  <script>
+    let senhaAtual = null;
+    let historico = [];
+
+    function atualizarTela() {
+      document.getElementById('senhaAtual').innerText = senhaAtual ? `Senha: ${senhaAtual}` : 'Nenhuma senha';
+    }
+
+    function chamar() {
+      let filaP = JSON.parse(localStorage.getItem('filaP')) || [];
+      let filaN = JSON.parse(localStorage.getItem('filaN')) || [];
+
+      if (filaP.length > 0) {
+        senhaAtual = filaP.shift();
+        localStorage.setItem('filaP', JSON.stringify(filaP));
+      } else if (filaN.length > 0) {
+        senhaAtual = filaN.shift();
+        localStorage.setItem('filaN', JSON.stringify(filaN));
+      } else {
+        alert('Todas as filas estão vazias!');
+        return;
+      }
+
+      historico.push(senhaAtual);
+      localStorage.setItem('senhaChamada', senhaAtual);
+      atualizarTela();
+    }
+
+    function reChamar() {
+      if (senhaAtual) {
+        localStorage.setItem('senhaChamada', senhaAtual);
+      }
+    }
+
+    function voltar() {
+      if (historico.length > 1) {
+        historico.pop();
+        senhaAtual = historico[historico.length - 1];
+        localStorage.setItem('senhaChamada', senhaAtual);
+        atualizarTela();
+      }
+    }
+
+    function zerar() {
+      if (confirm("Tem certeza que deseja zerar tudo?")) {
+        localStorage.removeItem('filaN');
+        localStorage.removeItem('filaP');
+        localStorage.removeItem('senhaChamada');
+        senhaAtual = null;
+        historico = [];
+        atualizarTela();
+      }
+    }
+
+    atualizarTela();
+  </script>
+</body>
+</html>

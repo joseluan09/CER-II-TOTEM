@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Totem - Gerar Senha</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>Gerar Senha</h1>
+  <button onclick="gerarSenha('N')">Senha Normal</button>
+  <button onclick="gerarSenha('P')">Senha Preferencial</button>
+  <p id="ultimaSenha"></p>
+
+  <script>
+    function gerarSenha(tipo) {
+      let chave = tipo === 'P' ? 'filaP' : 'filaN';
+      let fila = JSON.parse(localStorage.getItem(chave)) || [];
+
+      // Gera próxima senha (último número + 1)
+      let novaSenha = tipo + String((fila.length ? parseInt(fila[fila.length - 1].substring(1)) + 1 : 1)).padStart(3, '0');
+      fila.push(novaSenha);
+      localStorage.setItem(chave, JSON.stringify(fila));
+      document.getElementById('ultimaSenha').innerText = `Senha gerada: ${novaSenha}`;
+    }
+  </script>
+</body>
+</html>

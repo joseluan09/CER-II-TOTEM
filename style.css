@@ -1,0 +1,68 @@
+/* Reset básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
+}
+
+/* Corpo */
+body {
+  background-color: #e6f1f7;
+  color: #222;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+/* Títulos */
+h1 {
+  margin-bottom: 1.5rem;
+  color: #004aad; /* Azul Byte House clássico */
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+/* Botões */
+button {
+  background-color: #004aad;
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  margin: 0.5rem;
+  font-size: 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+
+button:hover {
+  background-color: #003580;
+}
+
+/* Parágrafos e textos */
+p, #painelSenha {
+  margin-top: 2rem;
+  font-size: 2rem;
+  color: #333;
+}
+
+/* Estilo especial para painel de senha */
+#painelSenha {
+  font-size: 5rem;
+  font-weight: bold;
+  color: #ffde59; /* Amarelo destaque */
+  text-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+  margin-top: 5rem;
+  user-select: none;
+}
+
+/* Container para centralizar conteúdo (se quiser usar) */
+.container {
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+}
