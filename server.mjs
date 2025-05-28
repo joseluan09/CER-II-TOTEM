@@ -8,6 +8,16 @@ let filaP = [];
 let filaSenhas = [];
 let senhaAtual = null;
 
+let operacaoEmAndamento = false;
+function travarOperacao() {
+    if (operacaoEmAndamento) return false;
+    operacaoEmAndamento = true;
+    return true;
+}
+function liberarOperacao() {
+    operacaoEmAndamento = false;
+}
+
 const mimeTypes = {
     '.html': 'text/html',
     '.js': 'text/javascript',
@@ -56,32 +66,68 @@ const server = createServer(async (req, res) => {
     // === ROTAS DE API ===
 
     if (url === '/api/senha' && method === 'POST') {
+        if (!travarOperacao()) {
+            res.writeHead(429, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ erro: 'Outra operação em andamento. Tente novamente.' }));
+            return;
+        }
+
         let body = '';
         req.on('data', chunk => body += chunk);
         req.on('end', async () => {
-            const { tipo } = JSON.parse(body);
-            const fila = tipo === 'P' ? filaP : filaN;
-            const novaSenha = tipo + String(fila.length + 1).padStart(3, '0');
-            fila.push(novaSenha);
-            filaSenhas.push(novaSenha);
-            await salvarFila();
+            try {
+                const { tipo } = JSON.parse(body);
+                const fila = tipo === 'P' ? filaP : filaN;
+                const novaSenha = tipo + String(fila.length + 1).padStart(3, '0');
+                fila.push(novaSenha);
+                filaSenhas.push(novaSenha);
+                await salvarFila();
 
-            console.log(`Nova senha ${tipo}: ${novaSenha}`);
-            res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ senha: novaSenha }));
+                console.log(`Nova senha ${tipo}: ${novaSenha}`);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ senha: novaSenha }));
+            } catch (err) {
+                res.writeHead(500).end('Erro interno ao gerar senha');
+            } finally {
+                liberarOperacao();
+            }
         });
         return;
     }
 
     if (url === '/api/proxima' && method === 'GET') {
-        senhaAtual = filaSenhas.shift() || null;
-        await salvarFila();
+        if (!travarOperacao()) {
+            res.writeHead(429, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ erro: 'Outra operação em andamento. Aguarde...' }));
+            return;
+        }
 
-        console.log(`Senha chamada: ${senhaAtual}`);
-        await writeFile(join(__dirname, 'senha_atual.txt'), senhaAtual || '', 'utf-8');
+        try {
+            if (senhaAtual !== null) {
+                res.writeHead(403, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ erro: 'A senha atual ainda não foi atendida.' }));
+                return;
+            }
 
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ senha: senhaAtual }));
+            if (filaSenhas.length === 0) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ erro: 'Nenhuma senha na fila. Gere uma senha primeiro.' }));
+                return;
+            }
+
+            senhaAtual = filaSenhas.shift();
+            await salvarFila();
+
+            console.log(`Senha chamada: ${senhaAtual}`);
+            await writeFile(join(__dirname, 'senha_atual.txt'), senhaAtual, 'utf-8');
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ senha: senhaAtual }));
+        } catch (err) {
+            res.writeHead(500).end('Erro interno ao chamar senha');
+        } finally {
+            liberarOperacao();
+        }
         return;
     }
 
@@ -106,7 +152,6 @@ const server = createServer(async (req, res) => {
     }
 });
 
-// Inicialização do servidor com carregamento da fila
 async function main() {
     await carregarFila();
     server.listen(PORT, '0.0.0.0', () => {

@@ -5,27 +5,49 @@
   <meta charset="UTF-8" />
   <title>Painel</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <div id="painelSenha">Aguardando chamada...</div>
+  <div id="painelSenhaAtual">Aguardando chamada...</div>
+  <div id="painelUltimasSenhas"></div>
 
   <script>
+    const ultimasSenhas = [];
+
     async function atualizarPainel() {
       try {
         const res = await fetch('/api/atual');
         if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
         const data = await res.json();
-        const senha = data.senha;
-        document.getElementById('painelSenha').innerText = senha ? `Senha: ${senha}` : 'Aguardando chamada...';
+        const senha = data.senha && data.senha.trim() !== '' ? data.senha : null;
+
+        const painelAtual = document.getElementById('painelSenhaAtual');
+        const painelHistorico = document.getElementById('painelUltimasSenhas');
+
+        if (senha) {
+          painelAtual.innerText = `Senha Atual: ${senha}`;
+
+          if (ultimasSenhas.length === 0 || ultimasSenhas[0] !== senha) {
+            ultimasSenhas.unshift(senha);
+            if (ultimasSenhas.length > 4) ultimasSenhas.pop();
+          }
+
+          // Mostra as últimas 4 chamadas, exceto a atual que tá no topo
+          painelHistorico.innerHTML = ultimasSenhas.slice(1).map(s => `<div>${s}</div>`).join('');
+        } else {
+          painelAtual.innerText = 'Aguardando chamada...';
+          painelHistorico.innerHTML = '';
+          ultimasSenhas.length = 0;
+        }
       } catch (e) {
         console.error('Erro ao buscar senha:', e);
-        document.getElementById('painelSenha').innerText = 'Erro ao buscar senha';
+        document.getElementById('painelSenhaAtual').innerText = 'Erro ao buscar senha';
+        document.getElementById('painelUltimasSenhas').innerHTML = '';
+        ultimasSenhas.length = 0;
       }
     }
 
-    setInterval(atualizarPainel, 2000);
+    setInterval(atualizarPainel, 3000);
     atualizarPainel();
   </script>
 </body>
