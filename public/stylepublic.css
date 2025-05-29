@@ -1,0 +1,43 @@
+/* Fundo geral */
+body {
+  background-color: #E6F0FA;
+  color: #0056A6;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+}
+
+/* Título principal */
+#painelSenhaAtual {
+  font-size: 3rem;
+  font-weight: bold;
+  margin: 20px 0;
+  color: #0056A6;
+}
+
+/* Título do histórico */
+#historicoTitulo {
+  font-weight: bold;
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+  color: #0056A6;
+}
+
+/* Caixas de senhas anteriores */
+.caixaSenha {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 15px;
+  background-color: #FFFFFF;
+  border: 2px solid #0056A6;
+  border-radius: 5px;
+  margin-bottom: 10px;
+  color: #0056A6;
+}
+
+/* Logo */
+img {
+  max-width: 200px;
+  margin-bottom: 20px;
+}

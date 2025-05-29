@@ -5,6 +5,11 @@
   <meta charset="UTF-8" />
   <title>Atendente</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    #senhaAtual {
+      transition: color 0.3s ease;
+    }
+  </style>
 </head>
 
 <body>
@@ -14,109 +19,156 @@
   <button onclick="voltar()">Voltar</button>
   <button onclick="zerar()">Zerar</button>
   <p id="senhaAtual">Nenhuma senha</p>
+  <p id="status">Pronto</p>
 
- <script>
-  let senhaAtual = null;
-  let chamando = false; // flag para evitar chamadas simultâneas
+  <script>
+    let senhaAtual = null;
+    let chamando = false;
 
-  async function chamar() {
-    if (chamando) return; // evita chamada repetida
-    chamando = true;
-
-    try {
-      const res = await fetch('/api/proxima');
-      if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
-      const data = await res.json();
-      senhaAtual = data.senha;
-
-      if (!senhaAtual) {
-        alert('Nenhuma senha na fila');
-        senhaAtual = null;
-      } else {
-        await notificarPainel(senhaAtual);
-      }
-      
-      atualizarTela();
-
-    } catch (e) {
-      console.error('Erro ao chamar senha:', e);
-    } finally {
-      chamando = false;
-    }
-  }
-
-  async function reChamar() {
-    if (!senhaAtual) {
-      alert('Nenhuma senha para rechamar');
-      return;
-    }
-    if (chamando) return;
-    chamando = true;
-
-    try {
-      await notificarPainel(senhaAtual);
-      atualizarTela();
-    } catch (e) {
-      console.error('Erro ao rechamar:', e);
-    } finally {
-      chamando = false;
-    }
-  }
-
-  async function voltar() {
-    if (!senhaAtual) {
-      alert('Nenhuma senha atual para voltar');
-      return;
+    function setStatus(texto) {
+      document.getElementById('status').innerText = texto;
     }
 
-    try {
-      const res = await fetch('/api/voltar', { method: 'POST' });
-      if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
-
+    function limparSenha() {
       senhaAtual = null;
       atualizarTela();
-
-    } catch (e) {
-      console.error('Erro ao voltar senha:', e);
     }
-  }
 
-  async function zerar() {
-    if (confirm("Tem certeza que deseja zerar tudo?")) {
-      try {
-        const res = await fetch('/api/zerar', { method: 'POST' });
-        if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
+    function atualizarTela() {
+      const el = document.getElementById('senhaAtual');
+      el.innerText = senhaAtual ? `Senha: ${senhaAtual}` : 'Nenhuma senha';
+      el.style.color = 'black';
 
-        senhaAtual = null;
-        atualizarTela();
-
-      } catch (e) {
-        console.error('Erro ao zerar:', e);
+      if (senhaAtual) {
+        setTimeout(() => {
+          el.style.color = 'gray';
+        }, 3000);
       }
     }
-  }
 
-  async function notificarPainel(senha) {
-    try {
-      const res = await fetch('http://localhost:3000/api/notificar', { // cria uma rota para notificar
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ senha })
-      });
-      if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
-      const data = await res.json();
-      console.log('Painel notificado:', data);
-    } catch (e) {
-      console.error('Erro ao notificar painel:', e);
-      throw e; // para tratar erro na chamada/rechamada
+    async function chamar() {
+      if (chamando) return;
+      chamando = true;
+      setStatus("Chamando...");
+
+      try {
+        const res = await fetch('http://localhost:3000/api/proxima');
+        const textoRes = await res.text();
+        console.log('Resposta bruta proxima:', textoRes);
+
+        if (!res.ok) {
+          alert(`Erro no servidor: ${res.status}`);
+          limparSenha();
+          return;
+        }
+
+        senhaAtual = textoRes || null;
+
+        if (!senhaAtual) {
+          alert('Nenhuma senha na fila');
+          limparSenha();
+        } else {
+          await notificarPainel(senhaAtual);
+        }
+
+        atualizarTela();
+      } catch (e) {
+        console.error('Erro ao chamar:', e);
+      } finally {
+        chamando = false;
+        setStatus("Pronto");
+      }
     }
-  }
 
-  function atualizarTela() {
-    document.getElementById('senhaAtual').innerText = senhaAtual ? `Senha: ${senhaAtual}` : 'Nenhuma senha';
-  }
-</script>
+    async function reChamar() {
+      if (!senhaAtual) {
+        alert('Nenhuma senha para rechamar');
+        return;
+      }
+      if (chamando) return;
+      chamando = true;
+      setStatus("Rechamando...");
 
+      try {
+        await notificarPainel(senhaAtual);
+        atualizarTela();
+      } catch (e) {
+        console.error('Erro ao rechamar:', e);
+      } finally {
+        chamando = false;
+        setStatus("Pronto");
+      }
+    }
+
+    async function voltar() {
+      if (!senhaAtual) {
+        alert('Nenhuma senha atual para voltar');
+        return;
+      }
+
+      setStatus("Voltando...");
+
+      try {
+        const res = await fetch('http://localhost:3000/api/voltar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ senha: senhaAtual })
+        });
+
+        if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
+        limparSenha();
+      } catch (e) {
+        console.error('Erro ao voltar senha:', e);
+      } finally {
+        setStatus("Pronto");
+      }
+    }
+
+    async function zerar() {
+      if (confirm("Tem certeza que deseja zerar tudo?")) {
+        setStatus("Zerando...");
+        try {
+          const res = await fetch('http://localhost:3000/api/zerar', {
+            method: 'POST'
+          });
+
+          if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
+          limparSenha();
+        } catch (e) {
+          console.error('Erro ao zerar:', e);
+        } finally {
+          setStatus("Pronto");
+        }
+      }
+    }
+
+    async function notificarPainel(senha) {
+      try {
+        const res = await fetch('http://localhost:3000/api/notificar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ senha })
+        });
+
+        const textoRes = await res.text();
+        console.log('Resposta notificar (raw):', textoRes);
+
+        if (!res.ok) {
+          console.error('Resposta não OK do notificar:', res.status, textoRes);
+          return;
+        }
+
+        try {
+          const data = JSON.parse(textoRes);
+          console.log('Painel notificado:', data);
+        } catch {
+          console.log('Resposta notificar não é JSON:', textoRes);
+        }
+      } catch (e) {
+        console.error('Erro ao notificar painel (não bloqueia):', e);
+      }
+    }
+  </script>
 </body>
 
 </html>

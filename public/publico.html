@@ -1,91 +1,150 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8" />
   <title>Painel</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="stylepublic.css" />
+  <style>
+    body {
+      transition: background-color 0.2s;
+    }
+    #painelSenhaAtual {
+      font-size: 3rem;
+      margin: 20px 0;
+    }
+    #historicoTitulo {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 1.5rem;
+    }
+    .caixaSenha {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 10px;
+      background: #eee;
+      border-radius: 5px;
+      margin-bottom: 5px;
+    }
+  </style>
 </head>
 
 <body>
+  <img src="image/logo.png" alt="Prefeitura Municipal de Areia Branca">
+  
   <div id="painelSenhaAtual">Aguardando chamada...</div>
+  
+  <div id="historicoTitulo" style="display:none;">Últimas chamadas:</div>
   <div id="painelUltimasSenhas"></div>
 
-<script>
-  const ultimasSenhas = [];
-  let senhaAnterior = null;
+  <audio id="audioChamada" src="audio/chamada.mp3" preload="auto"></audio>
 
-  // Pré-carrega o som da chamada
-  const somChamada = new Audio('audio/chamada.mp3'); // Certifique-se de ter esse arquivo em /public/audio/
-  
+  <script>
+    const ultimasSenhas = [];
+    let senhaAnterior = null;
+    let pingAnterior = null;
 
-  async function atualizarPainel() {
-    try {
-      const res = await fetch('/api/atual');
-      if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
-      const data = await res.json();
-      const senha = data.senha && data.senha.trim() !== '' ? data.senha : null;
+    const somChamada = document.getElementById('audioChamada');
 
-      const painelAtual = document.getElementById('painelSenhaAtual');
-      const painelHistorico = document.getElementById('painelUltimasSenhas');
+    async function atualizarPainel() {
+      try {
+        const res = await fetch('/api/atual');
+        if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
+        const data = await res.json();
 
-      if (senha) {
-        painelAtual.innerText = `Senha Atual: ${senha}`;
+        const senha = data.senha && data.senha.trim() !== '' ? data.senha : null;
+        const ping = data.ping || null;
 
-        if (senha !== senhaAnterior) {
-          senhaAnterior = senha;
+        const painelAtual = document.getElementById('painelSenhaAtual');
+        const painelHistorico = document.getElementById('painelUltimasSenhas');
+        const tituloHistorico = document.getElementById('historicoTitulo');
 
-          // Reproduz som
-          somChamada.currentTime = 0;
-          somChamada.play().catch(err => console.warn('Erro ao tocar som:', err));
+        if (senha) {
+          painelAtual.innerText = `Senha Atual: ${senha}`;
 
-          // Piscar tela
-          piscarTela();
+          // Tocamos o som e registramos se a senha mudou ou foi rechamada
+          if (senha !== senhaAnterior || ping !== pingAnterior) {
+            senhaAnterior = senha;
+            pingAnterior = ping;
 
-          // Adiciona ao histórico
-          ultimasSenhas.unshift(senha);
-          if (ultimasSenhas.length > 4) ultimasSenhas.pop();
+            somChamada.currentTime = 0;
+            somChamada.play().catch(err => console.warn('Erro ao tocar som:', err));
+            piscarTela();
+
+            const agora = new Date();
+            const hora = agora.toLocaleTimeString('pt-BR');
+            const dataFormatada = agora.toLocaleDateString('pt-BR');
+
+            // Só adiciona se for uma nova senha (não duplicar rechamadas)
+            if (senha !== ultimasSenhas[0]?.senha) {
+              ultimasSenhas.unshift({ senha, data: dataFormatada, hora });
+              if (ultimasSenhas.length > 5) ultimasSenhas.pop();
+            }
+
+            // Atualiza histórico (sem a senha atual que já está no topo)
+            if (ultimasSenhas.length > 1) {
+              tituloHistorico.style.display = 'block';
+              painelHistorico.innerHTML = ultimasSenhas.slice(1).map(s => `
+                <div class="caixaSenha">
+                  <span>${s.senha}</span>
+                  <span>${s.data} ${s.hora}</span>
+                </div>
+              `).join('');
+            } else {
+              tituloHistorico.style.display = 'none';
+              painelHistorico.innerHTML = '';
+            }
+          }
+        } else {
+          painelAtual.innerText = 'Aguardando chamada...';
+
+          // Mantém o histórico na tela se houver senhas anteriores
+          if (ultimasSenhas.length > 1) {
+            tituloHistorico.style.display = 'block';
+            painelHistorico.innerHTML = ultimasSenhas.slice(1).map(s => `
+              <div class="caixaSenha">
+                <span>${s.senha}</span>
+                <span>${s.data} ${s.hora}</span>
+              </div>
+            `).join('');
+          } else {
+            tituloHistorico.style.display = 'none';
+            painelHistorico.innerHTML = '';
+          }
+
+          // NÃO limpa o array nem as variáveis de controle
+          // ultimasSenhas.length = 0;
+          // senhaAnterior = null;
+          // pingAnterior = null;
         }
-
-        // Mostra as últimas 4 chamadas (exclui a atual)
-        painelHistorico.innerHTML = ultimasSenhas.slice(1).map(s => `<div>${s}</div>`).join('');
-      } else {
-        painelAtual.innerText = 'Aguardando chamada...';
-        painelHistorico.innerHTML = '';
+      } catch (e) {
+        console.error('Erro ao buscar senha:', e);
+        document.getElementById('painelSenhaAtual').innerText = 'Erro ao buscar senha';
+        document.getElementById('historicoTitulo').style.display = 'none';
+        document.getElementById('painelUltimasSenhas').innerHTML = '';
         ultimasSenhas.length = 0;
         senhaAnterior = null;
+        pingAnterior = null;
       }
-    } catch (e) {
-      console.error('Erro ao buscar senha:', e);
-      document.getElementById('painelSenhaAtual').innerText = 'Erro ao buscar senha';
-      document.getElementById('painelUltimasSenhas').innerHTML = '';
-      ultimasSenhas.length = 0;
-      senhaAnterior = null;
     }
-  }
 
-  function piscarTela() {
-    const body = document.body;
-    body.style.transition = 'background-color 0.2s';
+    function piscarTela() {
+      const body = document.body;
+      let flashes = 0;
+      const maxFlashes = 4;
+      const cores = ['#ffffcc', '#ffffff'];
 
-    let flashes = 0;
-    const maxFlashes = 4;
-    const interval = setInterval(() => {
-      body.style.backgroundColor = flashes % 2 === 0 ? '#ffffff' : '#000000';
-      flashes++;
-      if (flashes > maxFlashes) {
-        clearInterval(interval);
-        body.style.backgroundColor = ''; // volta ao normal
-      }
-    }, 200);
-  }
+      const interval = setInterval(() => {
+        body.style.backgroundColor = cores[flashes % 2];
+        flashes++;
+        if (flashes > maxFlashes) {
+          clearInterval(interval);
+          body.style.backgroundColor = '';
+        }
+      }, 200);
+    }
 
-  setInterval(atualizarPainel, 1000);
-  atualizarPainel();
-</script>
-
-  <audio id="audioChamada" src="music/chamada.mp3" preload="auto"></audio>
-
+    setInterval(atualizarPainel, 1000);
+    atualizarPainel();
+  </script>
 </body>
-
 </html>
