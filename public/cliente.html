@@ -8,13 +8,22 @@
 </head>
 
 <body>
-  <h1>Gerar Senha</h1>
-  <button onclick="gerarSenha('N')">Senha Normal</button>
-  <button onclick="gerarSenha('P')">Senha Preferencial</button>
-  <p id="ultimaSenha"></p>
+  <main>
+    <h1>Gerar Senha</h1>
+    <div>
+      <button onclick="gerarSenha('N')" id="btnNormal">Senha Normal</button>
+      <button onclick="gerarSenha('P')" id="btnPref">Senha Preferencial</button>
+    </div>
+    <p id="ultimaSenha"></p>
+  </main>
 
   <script>
     async function gerarSenha(tipo) {
+      const p = document.getElementById('ultimaSenha');
+      const btns = document.querySelectorAll('button');
+      p.innerText = 'Gerando senha...';
+      btns.forEach(btn => btn.disabled = true);
+
       try {
         const res = await fetch('/api/senha', {
           method: 'POST',
@@ -22,15 +31,18 @@
           body: JSON.stringify({ tipo })
         });
 
+        if (!res.ok) throw new Error(`Erro: ${res.status}`);
         const data = await res.json();
-        document.getElementById('ultimaSenha').innerText = `Senha gerada: ${data.senha}`;
+        p.innerText = `Senha gerada: ${data.senha}`;
       } catch (err) {
-        console.error('Erro ao gerar senha:', err);
-        document.getElementById('ultimaSenha').innerText = 'Erro ao gerar senha';
+        console.error(err);
+        p.innerText = 'Erro ao gerar senha. Tente novamente.';
+      } finally {
+        btns.forEach(btn => btn.disabled = false);
       }
     }
   </script>
-
 </body>
+
 
 </html>

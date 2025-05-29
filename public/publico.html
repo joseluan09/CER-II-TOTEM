@@ -11,45 +11,81 @@
   <div id="painelSenhaAtual">Aguardando chamada...</div>
   <div id="painelUltimasSenhas"></div>
 
-  <script>
-    const ultimasSenhas = [];
+<script>
+  const ultimasSenhas = [];
+  let senhaAnterior = null;
 
-    async function atualizarPainel() {
-      try {
-        const res = await fetch('/api/atual');
-        if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
-        const data = await res.json();
-        const senha = data.senha && data.senha.trim() !== '' ? data.senha : null;
+  // Pré-carrega o som da chamada
+  const somChamada = new Audio('audio/chamada.mp3'); // Certifique-se de ter esse arquivo em /public/audio/
+  
 
-        const painelAtual = document.getElementById('painelSenhaAtual');
-        const painelHistorico = document.getElementById('painelUltimasSenhas');
+  async function atualizarPainel() {
+    try {
+      const res = await fetch('/api/atual');
+      if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
+      const data = await res.json();
+      const senha = data.senha && data.senha.trim() !== '' ? data.senha : null;
 
-        if (senha) {
-          painelAtual.innerText = `Senha Atual: ${senha}`;
+      const painelAtual = document.getElementById('painelSenhaAtual');
+      const painelHistorico = document.getElementById('painelUltimasSenhas');
 
-          if (ultimasSenhas.length === 0 || ultimasSenhas[0] !== senha) {
-            ultimasSenhas.unshift(senha);
-            if (ultimasSenhas.length > 4) ultimasSenhas.pop();
-          }
+      if (senha) {
+        painelAtual.innerText = `Senha Atual: ${senha}`;
 
-          // Mostra as últimas 4 chamadas, exceto a atual que tá no topo
-          painelHistorico.innerHTML = ultimasSenhas.slice(1).map(s => `<div>${s}</div>`).join('');
-        } else {
-          painelAtual.innerText = 'Aguardando chamada...';
-          painelHistorico.innerHTML = '';
-          ultimasSenhas.length = 0;
+        if (senha !== senhaAnterior) {
+          senhaAnterior = senha;
+
+          // Reproduz som
+          somChamada.currentTime = 0;
+          somChamada.play().catch(err => console.warn('Erro ao tocar som:', err));
+
+          // Piscar tela
+          piscarTela();
+
+          // Adiciona ao histórico
+          ultimasSenhas.unshift(senha);
+          if (ultimasSenhas.length > 4) ultimasSenhas.pop();
         }
-      } catch (e) {
-        console.error('Erro ao buscar senha:', e);
-        document.getElementById('painelSenhaAtual').innerText = 'Erro ao buscar senha';
-        document.getElementById('painelUltimasSenhas').innerHTML = '';
-        ultimasSenhas.length = 0;
-      }
-    }
 
-    setInterval(atualizarPainel, 3000);
-    atualizarPainel();
-  </script>
+        // Mostra as últimas 4 chamadas (exclui a atual)
+        painelHistorico.innerHTML = ultimasSenhas.slice(1).map(s => `<div>${s}</div>`).join('');
+      } else {
+        painelAtual.innerText = 'Aguardando chamada...';
+        painelHistorico.innerHTML = '';
+        ultimasSenhas.length = 0;
+        senhaAnterior = null;
+      }
+    } catch (e) {
+      console.error('Erro ao buscar senha:', e);
+      document.getElementById('painelSenhaAtual').innerText = 'Erro ao buscar senha';
+      document.getElementById('painelUltimasSenhas').innerHTML = '';
+      ultimasSenhas.length = 0;
+      senhaAnterior = null;
+    }
+  }
+
+  function piscarTela() {
+    const body = document.body;
+    body.style.transition = 'background-color 0.2s';
+
+    let flashes = 0;
+    const maxFlashes = 4;
+    const interval = setInterval(() => {
+      body.style.backgroundColor = flashes % 2 === 0 ? '#ffffff' : '#000000';
+      flashes++;
+      if (flashes > maxFlashes) {
+        clearInterval(interval);
+        body.style.backgroundColor = ''; // volta ao normal
+      }
+    }, 200);
+  }
+
+  setInterval(atualizarPainel, 1000);
+  atualizarPainel();
+</script>
+
+  <audio id="audioChamada" src="music/chamada.mp3" preload="auto"></audio>
+
 </body>
 
 </html>

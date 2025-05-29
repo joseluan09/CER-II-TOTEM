@@ -15,91 +15,108 @@
   <button onclick="zerar()">Zerar</button>
   <p id="senhaAtual">Nenhuma senha</p>
 
-  <script>
-    let senhaAtual = null;
+ <script>
+  let senhaAtual = null;
+  let chamando = false; // flag para evitar chamadas simultâneas
 
-    async function chamar() {
+  async function chamar() {
+    if (chamando) return; // evita chamada repetida
+    chamando = true;
+
+    try {
+      const res = await fetch('/api/proxima');
+      if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
+      const data = await res.json();
+      senhaAtual = data.senha;
+
+      if (!senhaAtual) {
+        alert('Nenhuma senha na fila');
+        senhaAtual = null;
+      } else {
+        await notificarPainel(senhaAtual);
+      }
+      
+      atualizarTela();
+
+    } catch (e) {
+      console.error('Erro ao chamar senha:', e);
+    } finally {
+      chamando = false;
+    }
+  }
+
+  async function reChamar() {
+    if (!senhaAtual) {
+      alert('Nenhuma senha para rechamar');
+      return;
+    }
+    if (chamando) return;
+    chamando = true;
+
+    try {
+      await notificarPainel(senhaAtual);
+      atualizarTela();
+    } catch (e) {
+      console.error('Erro ao rechamar:', e);
+    } finally {
+      chamando = false;
+    }
+  }
+
+  async function voltar() {
+    if (!senhaAtual) {
+      alert('Nenhuma senha atual para voltar');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/voltar', { method: 'POST' });
+      if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
+
+      senhaAtual = null;
+      atualizarTela();
+
+    } catch (e) {
+      console.error('Erro ao voltar senha:', e);
+    }
+  }
+
+  async function zerar() {
+    if (confirm("Tem certeza que deseja zerar tudo?")) {
       try {
-        const res = await fetch('/api/proxima');
-        const data = await res.json();
-        senhaAtual = data.senha;
+        const res = await fetch('/api/zerar', { method: 'POST' });
+        if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
 
-        if (!senhaAtual) {
-          alert('Nenhuma senha na fila');
-        }
-
+        senhaAtual = null;
         atualizarTela();
 
       } catch (e) {
-        console.error('Erro ao chamar senha:', e);
+        console.error('Erro ao zerar:', e);
       }
     }
+  }
 
-    async function reChamar() {
-      if (!senhaAtual) {
-        alert('Nenhuma senha para rechamar');
-        return;
-      }
-
-      function rechamarSenha() {
-
-        atualizarTela();
-
-        fetch('http://localhost:3000/publico.html', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            senha: senhaAtual
-          })
-        })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error('Erro ao enviar rechamada para o painel.');
-            }
-            return response.json();
-          })
-          .then(data => {
-            console.log('Painel externo notificado:', data);
-          })
-          .catch(error => {
-            console.error('Erro na comunicação com o painel externo:', error);
-          });
-      }
+  async function notificarPainel(senha) {
+    try {
+      const res = await fetch('http://localhost:3000/api/notificar', { // cria uma rota para notificar
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senha })
+      });
+      if (!res.ok) throw new Error(`Status HTTP: ${res.status}`);
+      const data = await res.json();
+      console.log('Painel notificado:', data);
+    } catch (e) {
+      console.error('Erro ao notificar painel:', e);
+      throw e; // para tratar erro na chamada/rechamada
     }
+  }
 
-      async function voltar() {
-        if (!senhaAtual) {
-          alert('Nenhuma senha atual para voltar');
-          return;
-        }
+  function atualizarTela() {
+    document.getElementById('senhaAtual').innerText = senhaAtual ? `Senha: ${senhaAtual}` : 'Nenhuma senha';
+  }
+</script>
 
-        try {
-          await fetch('/api/voltar', { method: 'POST' });
-          senhaAtual = null;
-          atualizarTela();
-        } catch (e) {
-          console.error('Erro ao voltar senha:', e);
-        }
-      }
-
-      async function zerar() {
-        if (confirm("Tem certeza que deseja zerar tudo?")) {
-          try {
-            await fetch('/api/zerar', { method: 'POST' });
-            senhaAtual = null;
-            atualizarTela();
-          } catch (e) {
-            console.error('Erro ao zerar:', e);
-          }
-        }
-      }
-
-      function atualizarTela() {
-        document.getElementById('senhaAtual').innerText = senhaAtual ? `Senha: ${senhaAtual}` : 'Nenhuma senha';
-      }
-  </script>
 </body>
 
 </html>
